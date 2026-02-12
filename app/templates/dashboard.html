@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FlowTasks Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        .project {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .project h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .task-list {
+            list-style: none;
+            padding: 0;
+        }
+        .task-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+        }
+        .task-title {
+            flex: 1;
+        }
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-todo { background: #ffeaa5; color: #6b4f00; }
+        .status-doing { background: #81ecec; color: #006666; }
+        .status-done { background: #55efc4; color: #006644; }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #666;
+        }
+        .error {
+            background: #ff7675;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>📋 FlowTasks Dashboard</h1>
+    <div id="loading" class="loading">Loading projects...</div>
+    <div id="error" class="error" style="display: none;"></div>
+    <div id="projects-container"></div>
+
+    <script>
+        async function loadProjects() {
+            try {
+                // Fetch projects from your API
+                const response = await fetch('/api/projects/');
+                const projects = await response.json();
+                
+                const container = document.getElementById('projects-container');
+                const loading = document.getElementById('loading');
+                
+                // Hide loading
+                loading.style.display = 'none';
+                
+                if (projects.length === 0) {
+                    container.innerHTML = '<p style="text-align: center;">No projects yet. Create one via API!</p>';
+                    return;
+                }
+                
+                // Render each project
+                projects.forEach(project => {
+                    const projectEl = document.createElement('div');
+                    projectEl.className = 'project';
+                    
+                    // Count tasks by status
+                    const tasks = project.tasks || [];
+                    const todo = tasks.filter(t => t.status === 'todo').length;
+                    const doing = tasks.filter(t => t.status === 'doing').length;
+                    const done = tasks.filter(t => t.status === 'done').length;
+                    
+                    let tasksHtml = '';
+                    tasks.forEach(task => {
+                        tasksHtml += `
+                            <li class="task-item">
+                                <span class="task-title">${task.title}</span>
+                                <span class="status status-${task.status}">${task.status}</span>
+                            </li>
+                        `;
+                    });
+                    
+                    projectEl.innerHTML = `
+                        <h2>${project.name}</h2>
+                        <p>${project.description || 'No description'}</p>
+                        <div style="margin-bottom: 15px; font-size: 14px;">
+                            <span style="background: #ffeaa5; padding: 4px 8px; border-radius: 4px; margin-right: 5px;">📝 Todo: ${todo}</span>
+                            <span style="background: #81ecec; padding: 4px 8px; border-radius: 4px; margin-right: 5px;">⚡ Doing: ${doing}</span>
+                            <span style="background: #55efc4; padding: 4px 8px; border-radius: 4px;">✅ Done: ${done}</span>
+                        </div>
+                        <h3>Tasks (${tasks.length})</h3>
+                        <ul class="task-list">
+                            ${tasksHtml || '<li style="color: #999;">No tasks yet</li>'}
+                        </ul>
+                    `;
+                    
+                    container.appendChild(projectEl);
+                });
+                
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                const errorEl = document.getElementById('error');
+                errorEl.style.display = 'block';
+                errorEl.innerHTML = '❌ Failed to load projects. Make sure the API is running!';
+                console.error(error);
+            }
+        }
+        
+        // Load when page opens
+        loadProjects();
+        
+        // Refresh every 30 seconds
+        setInterval(loadProjects, 30000);
+    </script>
+</body>
+</html>
